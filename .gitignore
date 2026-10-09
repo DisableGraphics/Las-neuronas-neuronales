@@ -1,0 +1,9 @@
+build*
+data
+.cache
+*.pt
+compile_commands.json
+arclas/images
+arclas/artist_mapping
+arclas/labels
+arclas/tensors
