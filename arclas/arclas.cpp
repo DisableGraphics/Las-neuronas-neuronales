@@ -101,7 +101,10 @@ int main() {
 	net->to(device);
 
 	// Instantiate an SGD optimization algorithm to update our Net's parameters.
-	torch::optim::SGD optimizer(net->parameters(), torch::optim::SGDOptions{0.005}.weight_decay(1e-4));
+	torch::optim::SGDOptions opt{0.01};
+	opt.momentum(0.9);
+	opt.weight_decay(1e-4);
+	torch::optim::SGD optimizer(net->parameters(), opt);
 
 	const size_t total = alldata.size().value();
 	const size_t train_size = static_cast<size_t>(total * 0.8);
@@ -133,7 +136,9 @@ int main() {
 		size_t batch_index = 0;
 		std::vector<torch::Tensor> predictions;
 		std::vector<torch::Tensor> targets;
-		std::vector<float> losses;
+
+		float total_loss = 0;
+		size_t n = 0;
 		float avg_loss;
 
 		// Iterate the data loader to yield batches from the dataset.
@@ -156,9 +161,10 @@ int main() {
 			loss.backward();
 			// Update the parameters based on the calculated gradients.
 			optimizer.step();
-			losses.push_back(loss.item<float>());
+			total_loss += loss.item<float>();
+			n++;
 		}
-		avg_loss = std::accumulate(losses.begin(), losses.end(), 1.0) / losses.size();
+		avg_loss = total_loss/n;
 
 		auto all_predictions = torch::cat(predictions, 0);
 		auto all_targets = torch::cat(targets, 0);
@@ -174,7 +180,8 @@ int main() {
 
 		net->eval();
 		torch::NoGradGuard no_grad;
-		losses.clear();
+		total_loss = 0;
+		n = 0;
 		
 		for (size_t i = 0; i < test_loader.size(); i++) {
 			auto batch = test_loader.get(i);
@@ -187,13 +194,14 @@ int main() {
 			torch::Tensor loss = torch::nll_loss(prediction, batch.target);
 			predictions.push_back(prediction);
 			targets.push_back(batch.target);
-			losses.push_back(loss.item<float>());
+			total_loss += loss.item<float>();
+			n++;
 		}
 
 		all_predictions = torch::cat(predictions, 0);
 		all_targets = torch::cat(targets, 0);
 
-		avg_loss = std::accumulate(losses.begin(), losses.end(), 1.0) / losses.size();
+		avg_loss = total_loss / n;
 
 		if(avg_loss < last_test_loss) {
 			last_test_loss = avg_loss;

@@ -17,3 +17,4 @@ add_executable(names names.cpp common.cpp)
 target_link_libraries(names "${TORCH_LIBRARIES}")
 
 add_subdirectory(arclas)
+add_subdirectory(resnet)
